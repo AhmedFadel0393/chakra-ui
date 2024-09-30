@@ -2,25 +2,34 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_REPO = "https://github.com/AhmedFadel0393/chakra-ui.git"
-        RECIPIENTS = "developer@example.com"
-        GIT_USER_NAME = "AhmedFadel0393"
-        GIT_USER_EMAIL = "ahmed.fadel0393@gmail.com"
-        NODE_VERSION = "18.6.0" // Node.js version to use
-        NVM_DIR = "$HOME/.nvm"
+        NODE_VERSION = 'v18.6.0'
+        NVM_DIR = '/var/lib/jenkins/.nvm' // Adjust this path if necessary
+        GITHUB_CREDENTIALS = credentials('github-token')
     }
 
     stages {
-        stage('Install NVM and Node.js v18.6.0') {
+        stage('Declarative: Checkout SCM') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Ensure Node.js v18.6.0 is Installed') {
             steps {
                 script {
-                    // Install NVM and Node.js v18.6.0 without using backslashes
+                    // Install nvm and Node.js
                     sh '''
-                        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-                        export NVM_DIR="$HOME/.nvm"
+                        # Install nvm if not installed
+                        if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+                            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+                        fi
+                        
+                        # Load nvm and install the required Node.js version
                         . "$NVM_DIR/nvm.sh"
                         nvm install ${NODE_VERSION}
                         nvm use ${NODE_VERSION}
+                        
+                        # Verify node and npm versions
                         node -v
                         npm -v
                     '''
@@ -38,65 +47,49 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                    script {
-                        if (fileExists('.git')) {
-                            sh 'git pull https://$GITHUB_TOKEN@github.com/AhmedFadel0393/chakra-ui.git'
-                        } else {
-                            sh 'git clone https://$GITHUB_TOKEN@github.com/AhmedFadel0393/chakra-ui.git .'
-                        }
-                    }
+                    sh 'git pull https://$GITHUB_TOKEN@github.com/AhmedFadel0393/chakra-ui.git'
                 }
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                script {
-                    // Ensure NVM is available in this stage too
-                    sh '''
-                        export NVM_DIR="$HOME/.nvm"
-                        . "$NVM_DIR/nvm.sh"
-                        nvm use ${NODE_VERSION}
-                        npm install @chakra-ui/react @emotion/react @emotion/styled framer-motion
-                    '''
-                }
+                sh '''
+                    . "$NVM_DIR/nvm.sh"
+                    nvm use ${NODE_VERSION}
+                    npm install
+                    npm install @chakra-ui/react @emotion/react @emotion/styled framer-motion
+                    npm install @ark-ui/react
+                '''
             }
         }
 
         stage('Run Tests') {
             steps {
-                script {
-                    sh '''
-                        export NVM_DIR="$HOME/.nvm"
-                        . "$NVM_DIR/nvm.sh"
-                        nvm use ${NODE_VERSION}
-                        npm test
-                    '''
-                }
+                sh '''
+                    . "$NVM_DIR/nvm.sh"
+                    nvm use ${NODE_VERSION}
+                    npm test
+                '''
             }
         }
 
         stage('Build Project') {
             steps {
-                script {
-                    sh '''
-                        export NVM_DIR="$HOME/.nvm"
-                        . "$NVM_DIR/nvm.sh"
-                        nvm use ${NODE_VERSION}
-                        npm run build
-                    '''
-                }
+                sh '''
+                    . "$NVM_DIR/nvm.sh"
+                    nvm use ${NODE_VERSION}
+                    npm run build
+                '''
             }
         }
 
         stage('Version and Tag Release') {
             steps {
                 script {
-                    def currentVersion = sh(script: "npm version patch --no-git-tag-version", returnStdout: true).trim()
-                    sh "git tag -a v${currentVersion} -m 'Release version ${currentVersion}'"
-                    withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                        sh 'git push https://$GITHUB_TOKEN@github.com/AhmedFadel0393/chakra-ui.git v${currentVersion}'
-                    }
+                    // Example: Version and tag release can be customized
+                    sh 'git tag -a v1.0.0 -m "Release v1.0.0"'
+                    sh 'git push origin --tags'
                 }
             }
         }
@@ -104,40 +97,25 @@ pipeline {
         stage('Push to GitHub') {
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                    sh '''
-                        git config user.email "${GIT_USER_EMAIL}"
-                        git config user.name "${GIT_USER_NAME}"
-                        git add .
-                        git commit -m "Automated Build & Test - New Version"
-                        git push https://$GITHUB_TOKEN@github.com/AhmedFadel0393/chakra-ui.git
-                    '''
+                    sh 'git push https://$GITHUB_TOKEN@github.com/AhmedFadel0393/chakra-ui.git'
                 }
             }
         }
     }
 
     post {
-        success {
-            emailext (
-                subject: "Build Successful: UI Library - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: """<p>Good news!</p>
-                         <p>The build for <b>${env.JOB_NAME} #${env.BUILD_NUMBER}</b> was successful.</p>
-                         <p>Check the latest version at: <a href="${GITHUB_REPO}">GitHub Repository</a></p>
-                         <p>Jenkins Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>""",
-                to: "${RECIPIENTS}",
-                mimeType: 'text/html'
+        always {
+            emailext(
+                to: 'developer@example.com',
+                subject: "Jenkins Pipeline: ${currentBuild.fullDisplayName}",
+                body: "Jenkins build completed with status: ${currentBuild.currentResult}. Check Jenkins for details."
             )
         }
+        success {
+            echo 'Pipeline succeeded.'
+        }
         failure {
-            emailext (
-                subject: "Build Failed: UI Library - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: """<p>Attention Required!</p>
-                         <p>The build for <b>${env.JOB_NAME} #${env.BUILD_NUMBER}</b> has failed.</p>
-                         <p>Please check the logs to identify and fix the issue.</p>
-                         <p>Jenkins Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>""",
-                to: "${RECIPIENTS}",
-                mimeType: 'text/html'
-            )
+            echo 'Pipeline failed.'
         }
     }
 }
