@@ -6,12 +6,32 @@ pipeline {
         RECIPIENTS = "developer@example.com"
         GIT_USER_NAME = "AhmedFadel0393"
         GIT_USER_EMAIL = "ahmed.fadel0393@gmail.com"
+        NODE_VERSION = "18.6.0" // Ensure the pipeline uses Node.js v18.6.0
     }
 
     stages {
+        stage('Ensure Node.js v18.6.0 is Installed') {
+            steps {
+                script {
+                    // Check if Node.js v18.6.0 is installed; if not, install it
+                    def installedNodeVersion = sh(script: 'node -v', returnStdout: true).trim()
+                    if (installedNodeVersion != "v${NODE_VERSION}") {
+                        // Install Node.js v18.6.0
+                        sh '''
+                            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+                            sudo apt-get install -y nodejs
+                            node -v
+                            npm -v
+                        '''
+                    } else {
+                        echo "Node.js v18.6.0 is already installed: ${installedNodeVersion}"
+                    }
+                }
+            }
+        }
+
         stage('Increase Git Buffer Size') {
             steps {
-                // Increase Git buffer size and lower compression
                 sh 'git config --global http.postBuffer 1048576000'
                 sh 'git config --global core.compression 1'
             }
@@ -20,7 +40,6 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                    // Check if the .git directory exists, then perform a pull. Otherwise, clone the repo.
                     script {
                         if (fileExists('.git')) {
                             sh 'git pull https://$GITHUB_TOKEN@github.com/AhmedFadel0393/chakra-ui.git'
@@ -34,7 +53,6 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                // Install Chakra UI and other npm dependencies
                 sh 'npm install @chakra-ui/react @emotion/react @emotion/styled framer-motion'
             }
         }
