@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_REPO = "git@github.com:AhmedFadel0393/chakra-ui.git"
+        GITHUB_REPO = "https://github.com/AhmedFadel0393/chakra-ui.git"
         RECIPIENTS = "developer@example.com"
         GIT_USER_NAME = "AhmedFadel0393"
         GIT_USER_EMAIL = "ahmed.fadel0393@gmail.com"
@@ -19,8 +19,10 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
-                // Checkout the code from the new Chakra UI GitHub repo
-                git branch: 'main', credentialsId: 'github-token', url: "${GITHUB_REPO}"
+                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                    // Checkout the code from the GitHub repo using HTTPS and token authentication
+                    sh 'git clone https://$GITHUB_TOKEN@github.com/AhmedFadel0393/chakra-ui.git .'
+                }
             }
         }
 
@@ -48,7 +50,9 @@ pipeline {
                 script {
                     def currentVersion = sh(script: "npm version patch --no-git-tag-version", returnStdout: true).trim()
                     sh "git tag -a v${currentVersion} -m 'Release version ${currentVersion}'"
-                    sh "git push origin v${currentVersion}"
+                    withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                        sh 'git push https://$GITHUB_TOKEN@github.com/AhmedFadel0393/chakra-ui.git v${currentVersion}'
+                    }
                 }
             }
         }
