@@ -7,17 +7,18 @@ pipeline {
         GIT_USER_NAME = "AhmedFadel0393"
         GIT_USER_EMAIL = "ahmed.fadel0393@gmail.com"
         NODE_VERSION = "18.6.0" // Node.js version to use
+        NVM_DIR = "$HOME/.nvm"
     }
 
     stages {
         stage('Install NVM and Node.js v18.6.0') {
             steps {
                 script {
-                    // Install NVM and Node.js v18.6.0
+                    // Install NVM and Node.js v18.6.0 without using backslashes
                     sh '''
                         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
                         export NVM_DIR="$HOME/.nvm"
-                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        . "$NVM_DIR/nvm.sh"
                         nvm install ${NODE_VERSION}
                         nvm use ${NODE_VERSION}
                         node -v
@@ -54,7 +55,7 @@ pipeline {
                     // Ensure NVM is available in this stage too
                     sh '''
                         export NVM_DIR="$HOME/.nvm"
-                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        . "$NVM_DIR/nvm.sh"
                         nvm use ${NODE_VERSION}
                         npm install @chakra-ui/react @emotion/react @emotion/styled framer-motion
                     '''
@@ -67,7 +68,7 @@ pipeline {
                 script {
                     sh '''
                         export NVM_DIR="$HOME/.nvm"
-                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        . "$NVM_DIR/nvm.sh"
                         nvm use ${NODE_VERSION}
                         npm test
                     '''
@@ -80,7 +81,7 @@ pipeline {
                 script {
                     sh '''
                         export NVM_DIR="$HOME/.nvm"
-                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        . "$NVM_DIR/nvm.sh"
                         nvm use ${NODE_VERSION}
                         npm run build
                     '''
