@@ -6,26 +6,23 @@ pipeline {
         RECIPIENTS = "developer@example.com"
         GIT_USER_NAME = "AhmedFadel0393"
         GIT_USER_EMAIL = "ahmed.fadel0393@gmail.com"
-        NODE_VERSION = "18.6.0" // Ensure the pipeline uses Node.js v18.6.0
+        NODE_VERSION = "18.6.0" // Node.js version to use
     }
 
     stages {
-        stage('Ensure Node.js v18.6.0 is Installed') {
+        stage('Install NVM and Node.js v18.6.0') {
             steps {
                 script {
-                    // Check if Node.js v18.6.0 is installed; if not, install it
-                    def installedNodeVersion = sh(script: 'node -v', returnStdout: true).trim()
-                    if (installedNodeVersion != "v${NODE_VERSION}") {
-                        // Install Node.js v18.6.0
-                        sh '''
-                            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-                            sudo apt-get install -y nodejs
-                            node -v
-                            npm -v
-                        '''
-                    } else {
-                        echo "Node.js v18.6.0 is already installed: ${installedNodeVersion}"
-                    }
+                    // Install NVM and Node.js v18.6.0
+                    sh '''
+                        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+                        export NVM_DIR="$HOME/.nvm"
+                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        nvm install ${NODE_VERSION}
+                        nvm use ${NODE_VERSION}
+                        node -v
+                        npm -v
+                    '''
                 }
             }
         }
@@ -53,19 +50,41 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm install @chakra-ui/react @emotion/react @emotion/styled framer-motion'
+                script {
+                    // Ensure NVM is available in this stage too
+                    sh '''
+                        export NVM_DIR="$HOME/.nvm"
+                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        nvm use ${NODE_VERSION}
+                        npm install @chakra-ui/react @emotion/react @emotion/styled framer-motion
+                    '''
+                }
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'npm test'
+                script {
+                    sh '''
+                        export NVM_DIR="$HOME/.nvm"
+                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        nvm use ${NODE_VERSION}
+                        npm test
+                    '''
+                }
             }
         }
 
         stage('Build Project') {
             steps {
-                sh 'npm run build'
+                script {
+                    sh '''
+                        export NVM_DIR="$HOME/.nvm"
+                        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                        nvm use ${NODE_VERSION}
+                        npm run build
+                    '''
+                }
             }
         }
 
