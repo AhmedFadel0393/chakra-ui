@@ -20,8 +20,14 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                    // Checkout the code from the GitHub repo using HTTPS and token authentication
-                    sh 'git clone https://$GITHUB_TOKEN@github.com/AhmedFadel0393/chakra-ui.git .'
+                    // Check if the .git directory exists, then perform a pull. Otherwise, clone the repo.
+                    script {
+                        if (fileExists('.git')) {
+                            sh 'git pull https://$GITHUB_TOKEN@github.com/AhmedFadel0393/chakra-ui.git'
+                        } else {
+                            sh 'git clone https://$GITHUB_TOKEN@github.com/AhmedFadel0393/chakra-ui.git .'
+                        }
+                    }
                 }
             }
         }
